@@ -129,7 +129,7 @@ public class CallService {
     }
 
     public void startPrivateCall(Conversation conversation, boolean audioOnly, boolean advanceEngine) {
-        AVEngineKit.getInstance().startPrivateCall(conversation, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
+        CallSession callSession = AVEngineKit.getInstance().startPrivateCall(conversation, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
             @Override
             public void onCallStateUpdated(CallSession callSession, CallState state) {
 
@@ -160,10 +160,13 @@ public class CallService {
 
             }
         });
+        if(!callSession.isAudioOnly()) {
+            callSession.setVideoCapture(new FileVideoCapture(videoFilePath, callSession.getConversation(), callSession.getCallId()));
+        }
     }
 
     public void startGroupCall(Conversation conversation, List<String> targets, boolean audioOnly, boolean advanceEngine) {
-        AVEngineKit.getInstance().startGroupCall(conversation, targets, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
+        CallSession callSession = AVEngineKit.getInstance().startGroupCall(conversation, targets, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
             @Override
             public void onCallStateUpdated(CallSession callSession, CallState state) {
 
@@ -194,6 +197,9 @@ public class CallService {
 
             }
         });
+        if(!callSession.isAudioOnly()) {
+            callSession.setVideoCapture(new FileVideoCapture(videoFilePath, callSession.getConversation(), callSession.getCallId()));
+        }
     }
 
     public void onConferenceEvent(String event) {
