@@ -59,33 +59,36 @@ public class FileVideoCapture implements JavaVideoCapture {
     }
 
     @Override
-    public int onInit(String s) {
+    public int onInit(String label) {
+        //0表示成功，其他失败
         return 0;
     }
 
     @Override
-    public int onStartCapture(int i, int i1, int i2) {
+    public int onStartCapture(int width, int height, int frameRate) {
         try {
             startReadFramesFromFile();
         } catch (FFmpegFrameGrabber.Exception e) {
             e.printStackTrace();
         }
+        //0表示成功，其他失败
         return 0;
     }
 
     @Override
     public int onStopCapture() {
         stopReadFrames();
+        //0表示成功，其他失败
         return 0;
     }
 
     @Override
-    public int onFetchFrame(byte[] bytes, int i, int i1, int i2, int i3) {
+    public int onFetchFrame(byte[] sampleData, int nSampleBytes, int width, int height, int videoType) {
         try {
             byte[] data = cacheQueue.poll(10, TimeUnit.MILLISECONDS);
             if(data != null) {
-                if (data.length == bytes.length) {
-                    System.arraycopy(data, 0, bytes, 0, bytes.length);
+                if (data.length == sampleData.length) {
+                    System.arraycopy(data, 0, sampleData, 0, sampleData.length);
                 } else {
                     System.out.println("data size error");
                 }
@@ -93,6 +96,7 @@ public class FileVideoCapture implements JavaVideoCapture {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        //0表示成功，其他失败
         return 0;
     }
 
