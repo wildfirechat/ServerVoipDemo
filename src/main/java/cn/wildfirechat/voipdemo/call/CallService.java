@@ -110,7 +110,7 @@ public class CallService {
         });
 
 
-        //2. 设置turn服务地址，如果有多个，可以嗲用多次。如果是高级版，可以不用设置turn服务.
+        //2. 设置turn服务地址，如果有多个，可以调用多次。如果是高级版，可以不用设置turn服务.
         if(!StringUtils.isEmpty(iceUrl)) {
             //如果是高级版，不用设置turn服务。
             AVEngineKit.getInstance().addIceServer(iceUrl, iceUsername, icePassword);
