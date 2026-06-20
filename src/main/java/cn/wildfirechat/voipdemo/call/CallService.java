@@ -1,6 +1,7 @@
 package cn.wildfirechat.voipdemo.call;
 
 import cn.wildfirechat.*;
+import cn.wildfirechat.impl.SignalServerImpl;
 import cn.wildfirechat.voipdemo.RobotConfig;
 import cn.wildfirechat.pojos.Conversation;
 import cn.wildfirechat.pojos.OutputMessageData;
@@ -41,72 +42,69 @@ public class CallService {
         RobotService robotService = new RobotService(mRobotConfig.im_url, mRobotConfig.im_id, mRobotConfig.im_secret);
 
         //1. 初始化音视频SDK
-        AVEngineKit.getInstance().init(robotService, new AVEngineKitCallback() {
-            @Override
-            public void onReceiveCall(CallSession callSession) {
-                for (String participant : callSession.getParticipants()) {
-                    engineTypeMap.put(participant, callSession.isAdvanceEngine());
-                }
-
-                callSession.setEventCallback(new CallEventCallback() {
-                    @Override
-                    public void onCallStateUpdated(CallSession callSession, CallState state) {
-
-                    }
-
-                    @Override
-                    public void onParticipantJoined(CallSession callSession, String userId) {
-
-                    }
-
-                    @Override
-                    public void onParticipantConnected(CallSession callSession, String userId) {
-
-                    }
-
-                    @Override
-                    public void onReceiveRemoteVideoTrack(CallSession callSession, String userId, VideoTrack videoTrack) {
-                        String key = userId + "_" + callSession.getCallId();
-                        if(!imageVideoSinkMap.containsKey(key)) {
-                            ImageVideoSink imageVideoSink = new ImageVideoSink(userId, callSession.getCallId());
-                            imageVideoSinkMap.put(key, imageVideoSink);
-                            videoTrack.addSink(imageVideoSink);
-                        }
-                    }
-
-                    @Override
-                    public void onParticipantLeft(CallSession callSession, String userId, CallEndReason reason) {
-
-                    }
-
-                    @Override
-                    public void onCallEnd(CallSession callSession, CallEndReason endReason) {
-                        for (ImageVideoSink value : imageVideoSinkMap.values()) {
-                            if(value.callId.equals(callSession.getCallId())) {
-                                value.onCallEnded();
-                            }
-                        }
-                    }
-                });
-
-                callSession.setAudioDevice(new EchoAudioDevice(callSession.getConversation()));
-                if(!callSession.isAudioOnly()) {
-                    callSession.setVideoCapture(new FileVideoCapture(videoFilePath, callSession.getConversation(), callSession.getCallId()));
-                }
-
-                //延迟3秒接听
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            Thread.sleep(3000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        callSession.answer(callSession.isAudioOnly());
-                    }
-                }).start();
+        AVEngineKit.getInstance().init(mRobotConfig.im_id, new SignalServerImpl(robotService), callSession -> {
+            for (String participant : callSession.getParticipants()) {
+                engineTypeMap.put(participant, callSession.isAdvanceEngine());
             }
+
+            callSession.setEventCallback(new CallEventCallback() {
+                @Override
+                public void onCallStateUpdated(CallSession callSession, CallState state) {
+
+                }
+
+                @Override
+                public void onParticipantJoined(CallSession callSession, String userId) {
+
+                }
+
+                @Override
+                public void onParticipantConnected(CallSession callSession, String userId) {
+
+                }
+
+                @Override
+                public void onReceiveRemoteVideoTrack(CallSession callSession, String userId, VideoTrack videoTrack) {
+                    String key = userId + "_" + callSession.getCallId();
+                    if(!imageVideoSinkMap.containsKey(key)) {
+                        ImageVideoSink imageVideoSink = new ImageVideoSink(userId, callSession.getCallId());
+                        imageVideoSinkMap.put(key, imageVideoSink);
+                        videoTrack.addSink(imageVideoSink);
+                    }
+                }
+
+                @Override
+                public void onParticipantLeft(CallSession callSession, String userId, CallEndReason reason) {
+
+                }
+
+                @Override
+                public void onCallEnd(CallSession callSession, CallEndReason endReason) {
+                    for (ImageVideoSink value : imageVideoSinkMap.values()) {
+                        if(value.callId.equals(callSession.getCallId())) {
+                            value.onCallEnded();
+                        }
+                    }
+                }
+            });
+
+            callSession.setAudioDevice(new EchoAudioDevice(callSession.getConversation()));
+            if(!callSession.isAudioOnly()) {
+                callSession.setVideoCapture(new FileVideoCapture(videoFilePath, callSession.getConversation(), callSession.getCallId()));
+            }
+
+            //延迟3秒接听
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    callSession.answer(callSession.isAudioOnly());
+                }
+            }).start();
         });
 
 
@@ -159,7 +157,7 @@ public class CallService {
             public void onCallEnd(CallSession callSession, CallEndReason endReason) {
 
             }
-        });
+        }, 0, null);
         if(!callSession.isAudioOnly()) {
             callSession.setVideoCapture(new FileVideoCapture(videoFilePath, callSession.getConversation(), callSession.getCallId()));
         }
@@ -196,7 +194,7 @@ public class CallService {
             public void onCallEnd(CallSession callSession, CallEndReason endReason) {
 
             }
-        });
+        }, 0, null);
         if(!callSession.isAudioOnly()) {
             callSession.setVideoCapture(new FileVideoCapture(videoFilePath, callSession.getConversation(), callSession.getCallId()));
         }
