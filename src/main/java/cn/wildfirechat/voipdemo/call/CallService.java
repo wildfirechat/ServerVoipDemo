@@ -7,11 +7,15 @@ import cn.wildfirechat.pojos.Conversation;
 import cn.wildfirechat.pojos.OutputMessageData;
 import cn.wildfirechat.sdk.RobotService;
 import dev.onvoid.webrtc.media.video.VideoTrack;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -205,6 +209,75 @@ public class CallService {
     }
 
     public boolean onReceiveCallMessage(OutputMessageData messageData) {
+        if(messageData.getPayload().getType() == 408) { //会议邀请
+            try {
+                String callId = messageData.getPayload().getContent();
+                JSONObject jsonObject = (JSONObject)(new JSONParser()).parse(new String(Base64.getDecoder().decode(messageData.getPayload().getBase64edData())));
+
+                String host = (String)jsonObject.get("h");
+                String title = (String)jsonObject.get("t");
+                String pin = (String)jsonObject.get("p");
+                boolean audience = false;
+                if(jsonObject.get("audience") instanceof Long) {
+                    audience = (Long)jsonObject.get("audience") > 0;
+                } else if(jsonObject.get("audience") instanceof Integer) {
+                    audience = (Integer)jsonObject.get("audience") > 0;
+                }
+
+                boolean advanced = false;
+                if(jsonObject.get("advanced") instanceof Long) {
+                    advanced = (Long)jsonObject.get("advanced") > 0;
+                } else if(jsonObject.get("advanced") instanceof Integer) {
+                    advanced = (Integer)jsonObject.get("advanced") > 0;
+                }
+
+                CallSession callSession = AVEngineKit.getInstance().joinConference(callId, pin, audience, advanced, false, new EchoAudioDevice(null), new CallEventCallback() {
+                    @Override
+                    public void onCallStateUpdated(CallSession callSession, CallState state) {
+
+                    }
+
+                    @Override
+                    public void onParticipantJoined(CallSession callSession, String userId) {
+
+                    }
+
+                    @Override
+                    public void onParticipantConnected(CallSession callSession, String userId) {
+
+                    }
+
+                    @Override
+                    public void onReceiveRemoteVideoTrack(CallSession callSession, String userId, VideoTrack videoTrack) {
+                        String key = userId + "_" + callSession.getCallId();
+                        if(!imageVideoSinkMap.containsKey(key)) {
+                            ImageVideoSink imageVideoSink = new ImageVideoSink(userId, callSession.getCallId());
+                            imageVideoSinkMap.put(key, imageVideoSink);
+                            videoTrack.addSink(imageVideoSink);
+                        }
+                    }
+
+                    @Override
+                    public void onParticipantLeft(CallSession callSession, String userId, CallEndReason reason) {
+
+                    }
+
+                    @Override
+                    public void onCallEnd(CallSession callSession, CallEndReason endReason) {
+                        for (ImageVideoSink value : imageVideoSinkMap.values()) {
+                            if(value.callId.equals(callSession.getCallId())) {
+                                value.onCallEnded();
+                            }
+                        }
+                    }
+                }, 0, null);
+
+                callSession.setVideoCapture(new FileVideoCapture(videoFilePath, callSession.getConversation(), callSession.getCallId()));
+            } catch (ParseException e) {
+                throw new RuntimeException(e);
+            }
+            return true;
+        }
         return AVEngineKit.getInstance().onReceiveCallMessage(messageData);
     }
 }
