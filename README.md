@@ -26,7 +26,7 @@ mvn -Djavacpp.platform=macosx-arm64 package
 ```
 
 ## 配置机器人
-在IM服务中为当前服务创建机器人，或者使用已有机器人，需要修改机器人的回调地址为```http://${当前机器IP}:8083/robot/recvmsg```。把机器人相关信息配置到本项目config目录下的```robot.properties```文件里。
+在IM服务中为当前服务创建机器人，或者使用已有机器人，支持配置多个机器人。每个机器人的回调地址需要分别配置为```http://${当前机器IP}:8883/robot/recvmsg/{机器人ID}```（会议事件回调为```http://${当前机器IP}:8883/robot/recvmsg/{机器人ID}/conference```）。把所有机器人的信息配置到本项目config目录下的```robot.properties```文件里。
 
 如果使用免费版本音视频，需要部署turn服务，并配置到config目录下的```application.properties```文件中，注意上线前一定要切换到你们自己的turn服务。如果是音视频高级版，可以不用配置turn服务。
 

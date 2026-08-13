@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.annotation.PostConstruct;
 import java.util.Arrays;
 
 @org.springframework.stereotype.Service
@@ -18,23 +17,13 @@ public class ServiceImpl {
     private static final Logger LOG = LoggerFactory.getLogger(ServiceImpl.class);
 
     @Autowired
-    private RobotConfig mRobotConfig;
-
-    private RobotService robotService;
-
-    @Autowired
     private CallService callService;
 
-    @PostConstruct
-    private void init() {
-        robotService = new RobotService(mRobotConfig.im_url, mRobotConfig.im_id, mRobotConfig.im_secret);
-    }
-
-    public void onReceiveMessage(OutputMessageData messageData) {
-        LOG.info("on receive message {}", messageData.getMessageId());
+    public void onReceiveMessage(String robotId, OutputMessageData messageData) {
+        LOG.info("robot {} on receive message {}", robotId, messageData.getMessageId());
 
         if(messageData.getPayload().getType() >= 400 && messageData.getPayload().getType() <= 420) {
-            callService.onReceiveCallMessage(messageData);
+            callService.onReceiveCallMessage(robotId, messageData);
             return;
         }
 
@@ -46,18 +35,23 @@ public class ServiceImpl {
                 messageData.getConv().setTarget(messageData.getSender());
             }
 
-            if(callService.hasPreferEngine(messageData.getSender())) {
+            if(callService.hasPreferEngine(robotId, messageData.getSender())) {
                 if(messageData.getConv().getType() == ProtoConstants.ConversationType.ConversationType_Private) {
-                    callService.startPrivateCall(messageData.getConv(), false, callService.isAdvanceEngine(messageData.getSender()));
+                    callService.startPrivateCall(robotId, messageData.getConv(), false, callService.isAdvanceEngine(robotId, messageData.getSender()));
                 } else {
-                    callService.startGroupCall(messageData.getConv(), Arrays.asList(messageData.getSender()), false, callService.isAdvanceEngine(messageData.getSender()));
+                    callService.startGroupCall(robotId, messageData.getConv(), Arrays.asList(messageData.getSender()), false, callService.isAdvanceEngine(robotId, messageData.getSender()));
                 }
             } else {
+                RobotService robotService = callService.getRobotService(robotId);
+                if(robotService == null) {
+                    LOG.error("robot {} not exist!", robotId);
+                    return;
+                }
                 MessagePayload payload = new MessagePayload();
                 payload.setType(1);
                 payload.setSearchableContent("请先给我打个电话，以后我才能给您电话");
                 try {
-                    IMResult<SendMessageResult> result = robotService.sendMessage(mRobotConfig.im_id, messageData.getConv(), payload);
+                    IMResult<SendMessageResult> result = robotService.sendMessage(robotId, messageData.getConv(), payload);
                     if (result != null) {
                         if (result.getErrorCode() == ErrorCode.ERROR_CODE_SUCCESS) {
                             LOG.info("Send response success");
@@ -77,8 +71,8 @@ public class ServiceImpl {
         return;
     }
 
-    public void onReceiveConferenceEvent(String event) {
-        callService.onConferenceEvent(event);
+    public void onReceiveConferenceEvent(String robotId, String event) {
+        callService.onConferenceEvent(robotId, event);
     }
 
 }

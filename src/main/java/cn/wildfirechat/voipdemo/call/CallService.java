@@ -10,19 +10,21 @@ import dev.onvoid.webrtc.media.video.VideoTrack;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @org.springframework.stereotype.Service
 public class CallService {
+    private static final Logger LOG = LoggerFactory.getLogger(CallService.class);
     @Autowired
     private RobotConfig mRobotConfig;
 
@@ -38,19 +40,45 @@ public class CallService {
     @Value("${video.file.path}")
     private String videoFilePath;
 
+    //每个机器人一套独立的上下文：RobotService + AVEngineKit 实例
+    private final Map<String, RobotContext> robotContextMap = new ConcurrentHashMap<>();
+
     // ConcurrentHashMap: entries are removed on call end, otherwise the map would grow forever
     private Map<String, ImageVideoSink> imageVideoSinkMap = new ConcurrentHashMap<>();
 
-    private final Map<String, Boolean> engineTypeMap = new HashMap<>();
+    //key为 robotId + "_" + userId
+    private final Map<String, Boolean> engineTypeMap = new ConcurrentHashMap<>();
+
+    private static class RobotContext {
+        RobotService robotService;
+        AVEngineKit engine;
+    }
 
     @PostConstruct
     private void init() {
-        RobotService robotService = new RobotService(mRobotConfig.im_url, mRobotConfig.im_id, mRobotConfig.im_secret);
+        for (RobotConfig.RobotInfo robotInfo : mRobotConfig.getList()) {
+            initRobot(robotInfo);
+        }
 
-        //1. 初始化音视频SDK
-        AVEngineKit.getInstance().init(mRobotConfig.im_id, new SignalServerImpl(robotService), callSession -> {
+        //设置turn服务地址，如果有多个，可以调用多次。如果是高级版，可以不用设置turn服务。全局生效，只需设置一次
+        if(!StringUtils.isEmpty(iceUrl)) {
+            //如果是高级版，不用设置turn服务。
+            AVEngineKit.addIceServer(iceUrl, iceUsername, icePassword);
+        }
+
+        //打开webrtc的日志，一般不用打开，除非出现问题需要debug
+        //AVEngineKit.enableWebRTCLog();
+    }
+
+    private void initRobot(RobotConfig.RobotInfo robotInfo) {
+        String robotId = robotInfo.getIm_id();
+        RobotService robotService = new RobotService(robotInfo.getIm_url(), robotId, robotInfo.getIm_secret());
+
+        AVEngineKit engine = new AVEngineKit();
+        //初始化音视频SDK
+        engine.init(robotId, new SignalServerImpl(robotService), callSession -> {
             for (String participant : callSession.getParticipants()) {
-                engineTypeMap.put(participant, callSession.isAdvanceEngine());
+                engineTypeMap.put(engineTypeKey(robotId, participant), callSession.isAdvanceEngine());
             }
 
             callSession.setEventCallback(new CallEventCallback() {
@@ -120,27 +148,49 @@ public class CallService {
             }).start();
         });
 
+        RobotContext context = new RobotContext();
+        context.robotService = robotService;
+        context.engine = engine;
+        robotContextMap.put(robotId, context);
+        LOG.info("robot {} initialized", robotId);
+    }
 
-        //2. 设置turn服务地址，如果有多个，可以调用多次。如果是高级版，可以不用设置turn服务.
-        if(!StringUtils.isEmpty(iceUrl)) {
-            //如果是高级版，不用设置turn服务。
-            AVEngineKit.getInstance().addIceServer(iceUrl, iceUsername, icePassword);
+    private static String engineTypeKey(String robotId, String userId) {
+        return robotId + "_" + userId;
+    }
+
+    public boolean hasRobot(String robotId) {
+        return robotContextMap.containsKey(robotId);
+    }
+
+    public RobotService getRobotService(String robotId) {
+        RobotContext context = robotContextMap.get(robotId);
+        return context != null ? context.robotService : null;
+    }
+
+    private AVEngineKit getEngine(String robotId) {
+        RobotContext context = robotContextMap.get(robotId);
+        if(context == null) {
+            LOG.error("robot {} not exist!", robotId);
+            return null;
         }
-
-        //3. 打开webrtc的日志，一般不用打开，除非出现问题需要debug
-        //AVEngineKit.getInstance().enableWebRTCLog();
+        return context.engine;
     }
 
-    public boolean hasPreferEngine(String userId) {
-        return engineTypeMap.containsKey(userId);
+    public boolean hasPreferEngine(String robotId, String userId) {
+        return engineTypeMap.containsKey(engineTypeKey(robotId, userId));
     }
 
-    public boolean isAdvanceEngine(String userId) {
-        return engineTypeMap.get(userId);
+    public boolean isAdvanceEngine(String robotId, String userId) {
+        return engineTypeMap.get(engineTypeKey(robotId, userId));
     }
 
-    public void startPrivateCall(Conversation conversation, boolean audioOnly, boolean advanceEngine) {
-        CallSession callSession = AVEngineKit.getInstance().startPrivateCall(conversation, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
+    public void startPrivateCall(String robotId, Conversation conversation, boolean audioOnly, boolean advanceEngine) {
+        AVEngineKit engine = getEngine(robotId);
+        if(engine == null) {
+            return;
+        }
+        CallSession callSession = engine.startPrivateCall(conversation, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
             @Override
             public void onCallStateUpdated(CallSession callSession, CallState state) {
 
@@ -176,8 +226,12 @@ public class CallService {
         }
     }
 
-    public void startGroupCall(Conversation conversation, List<String> targets, boolean audioOnly, boolean advanceEngine) {
-        CallSession callSession = AVEngineKit.getInstance().startGroupCall(conversation, targets, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
+    public void startGroupCall(String robotId, Conversation conversation, List<String> targets, boolean audioOnly, boolean advanceEngine) {
+        AVEngineKit engine = getEngine(robotId);
+        if(engine == null) {
+            return;
+        }
+        CallSession callSession = engine.startGroupCall(conversation, targets, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
             @Override
             public void onCallStateUpdated(CallSession callSession, CallState state) {
 
@@ -213,11 +267,18 @@ public class CallService {
         }
     }
 
-    public void onConferenceEvent(String event) {
-        AVEngineKit.getInstance().onConferenceEvent(event);
+    public void onConferenceEvent(String robotId, String event) {
+        AVEngineKit engine = getEngine(robotId);
+        if(engine != null) {
+            engine.onConferenceEvent(event);
+        }
     }
 
-    public boolean onReceiveCallMessage(OutputMessageData messageData) {
+    public boolean onReceiveCallMessage(String robotId, OutputMessageData messageData) {
+        AVEngineKit engine = getEngine(robotId);
+        if(engine == null) {
+            return false;
+        }
         if(messageData.getPayload().getType() == 408) { //会议邀请
             try {
                 String callId = messageData.getPayload().getContent();
@@ -240,7 +301,7 @@ public class CallService {
                     advanced = (Integer)jsonObject.get("advanced") > 0;
                 }
 
-                CallSession callSession = AVEngineKit.getInstance().joinConference(callId, pin, audience, advanced, false, new EchoAudioDevice(null), new CallEventCallback() {
+                CallSession callSession = engine.joinConference(callId, pin, audience, advanced, false, new EchoAudioDevice(null), new CallEventCallback() {
                     @Override
                     public void onCallStateUpdated(CallSession callSession, CallState state) {
 
@@ -294,6 +355,6 @@ public class CallService {
             }
             return true;
         }
-        return AVEngineKit.getInstance().onReceiveCallMessage(messageData);
+        return engine.onReceiveCallMessage(messageData);
     }
 }
