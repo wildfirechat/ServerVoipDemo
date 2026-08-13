@@ -40,6 +40,10 @@ public class CallService {
     @Value("${video.file.path}")
     private String videoFilePath;
 
+    //是否只发送音视频，不接收对方的音视频流（仅对高级版音视频有效）
+    @Value("${call.send.only:false}")
+    private boolean sendOnly;
+
     //每个机器人一套独立的上下文：RobotService + AVEngineKit 实例
     private final Map<String, RobotContext> robotContextMap = new ConcurrentHashMap<>();
 
@@ -143,7 +147,7 @@ public class CallService {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    callSession.answer(callSession.isAudioOnly());
+                    callSession.answer(callSession.isAudioOnly(), sendOnly);
                 }
             }).start();
         });
@@ -190,7 +194,7 @@ public class CallService {
         if(engine == null) {
             return;
         }
-        CallSession callSession = engine.startPrivateCall(conversation, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
+        CallSession callSession = engine.startPrivateCall(conversation, audioOnly, advanceEngine, sendOnly, new EchoAudioDevice(conversation), new CallEventCallback() {
             @Override
             public void onCallStateUpdated(CallSession callSession, CallState state) {
 
@@ -231,7 +235,7 @@ public class CallService {
         if(engine == null) {
             return;
         }
-        CallSession callSession = engine.startGroupCall(conversation, targets, audioOnly, advanceEngine, new EchoAudioDevice(conversation), new CallEventCallback() {
+        CallSession callSession = engine.startGroupCall(conversation, targets, audioOnly, advanceEngine, sendOnly, new EchoAudioDevice(conversation), new CallEventCallback() {
             @Override
             public void onCallStateUpdated(CallSession callSession, CallState state) {
 
@@ -302,7 +306,7 @@ public class CallService {
                     advanced = (Integer)jsonObject.get("advanced") > 0;
                 }
 
-                CallSession callSession = engine.joinConference(callId, pin, audience, advanced, false, new EchoAudioDevice(null), new CallEventCallback() {
+                CallSession callSession = engine.joinConference(callId, pin, audience, false, sendOnly, new EchoAudioDevice(null), new CallEventCallback() {
                     @Override
                     public void onCallStateUpdated(CallSession callSession, CallState state) {
 

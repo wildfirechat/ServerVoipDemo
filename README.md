@@ -26,9 +26,11 @@ mvn -Djavacpp.platform=macosx-arm64 package
 ```
 
 ## 配置机器人
-在IM服务中为当前服务创建机器人，或者使用已有机器人，支持配置多个机器人。每个机器人的回调地址需要分别配置为```http://${当前机器IP}:8883/robot/recvmsg/{机器人ID}```（会议事件回调为```http://${当前机器IP}:8883/robot/recvmsg/{机器人ID}/conference```）。把所有机器人的信息配置到本项目config目录下的```robot.properties```文件里。
+在IM服务中为当前服务创建机器人，或者使用已有机器人，支持配置多个机器人。每个机器人的回调地址都配置为```http://${当前机器IP}:8883/robot/recvmsg```（会议事件回调为```http://${当前机器IP}:8883/robot/recvmsg/conference```），服务会根据消息中的toRobotId自动分发到对应的机器人。把所有机器人的信息配置到本项目config目录下的```robot.properties```文件里。
 
 如果使用免费版本音视频，需要部署turn服务，并配置到config目录下的```application.properties```文件中，注意上线前一定要切换到你们自己的turn服务。如果是音视频高级版，可以不用配置turn服务。
+
+如果需要机器人只发送音视频而不接收对方的音视频流（仅对高级版音视频有效），把config目录下```application.properties```文件中的```call.send.only```设置为```true```，默认为```false```双向收发。
 
 ## 运行
 在```target```目录找到```server_voip_demo-XXXX.jar```，把jar包和放置配置文件的```config```目录放到一起，然后执行下面命令：
