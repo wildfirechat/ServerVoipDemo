@@ -5,12 +5,19 @@
 要使用服务端音视频SDK，必须分配一个机器人作为与用户沟通的角色。在用户看来是在跟一个机器人通话。一个机器人角色可以同时支持多路音视频通话。
 
 ## 支持平台
-仅支持```macos + arm64```架构和```linux + x86_64```架构。其他平台架构不支持。
+仅支持```macos + arm64```、```linux + x86_64```和```linux + aarch64```架构。其他平台架构不支持。
+
+linux 系统对 glibc 版本有要求：```linux + x86_64```要求 glibc 2.28 及以上，```linux + aarch64```要求 glibc 2.29 及以上。
 
 ## 编译
 打包```linux + x86_64```架构：
 ```
 mvn -Djavacpp.platform=linux-x86_64 package
+```
+
+打包```linux + aarch64```架构：
+```
+mvn -Djavacpp.platform=linux-aarch64 -Dwebrtc.platform=linux-aarch64 package
 ```
 
 打包```macos + arm64```架构：
