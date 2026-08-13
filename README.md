@@ -17,7 +17,7 @@ mvn -Djavacpp.platform=linux-x86_64 package
 
 打包```linux + aarch64```架构：
 ```
-mvn -Djavacpp.platform=linux-aarch64 -Dwebrtc.platform=linux-aarch64 package
+mvn -Djavacpp.platform=linux-arm64 -Dwebrtc.platform=linux-aarch64 package
 ```
 
 打包```macos + arm64```架构：
