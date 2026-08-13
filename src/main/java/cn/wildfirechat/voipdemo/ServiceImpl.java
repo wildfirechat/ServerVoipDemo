@@ -71,8 +71,8 @@ public class ServiceImpl {
         return;
     }
 
-    public void onReceiveConferenceEvent(String robotId, String event) {
-        callService.onConferenceEvent(robotId, event);
+    public void onReceiveConferenceEvent(String event) {
+        callService.onConferenceEvent(event);
     }
 
 }

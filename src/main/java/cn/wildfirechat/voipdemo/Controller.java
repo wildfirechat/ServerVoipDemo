@@ -14,21 +14,18 @@ public class Controller {
     @Autowired
     private CallService mCallService;
 
-    @PostMapping(value = "/robot/recvmsg/{robotId}", produces = "application/json;charset=UTF-8"   )
-    public Object recvMsg(@PathVariable String robotId, @RequestBody OutputMessageData messageData) {
-        if(!mCallService.hasRobot(robotId)) {
-            return "unknown robot: " + robotId;
+    @PostMapping(value = "/robot/recvmsg", produces = "application/json;charset=UTF-8"   )
+    public Object recvMsg(@RequestBody OutputMessageData messageData) {
+        if(!mCallService.hasRobot(messageData.getToRobotId())) {
+            return "unknown robot: " + messageData.getToRobotId();
         }
-        mService.onReceiveMessage(robotId, messageData);
+        mService.onReceiveMessage(messageData.getToRobotId(), messageData);
         return "ok";
     }
 
-    @PostMapping(value = "/robot/recvmsg/{robotId}/conference", produces = "application/json;charset=UTF-8"   )
-    public Object recvConferenceEvent(@PathVariable String robotId, @RequestBody String event) {
-        if(!mCallService.hasRobot(robotId)) {
-            return "unknown robot: " + robotId;
-        }
-        mService.onReceiveConferenceEvent(robotId, event);
+    @PostMapping(value = "/robot/recvmsg/conference", produces = "application/json;charset=UTF-8"   )
+    public Object recvConferenceEvent(@RequestBody String event) {
+        mService.onReceiveConferenceEvent(event);
         return "ok";
     }
 }

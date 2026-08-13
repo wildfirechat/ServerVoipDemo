@@ -267,10 +267,11 @@ public class CallService {
         }
     }
 
-    public void onConferenceEvent(String robotId, String event) {
-        AVEngineKit engine = getEngine(robotId);
-        if(engine != null) {
-            engine.onConferenceEvent(event);
+    public void onConferenceEvent(String event) {
+        for (RobotContext engineContext : robotContextMap.values()) {
+            if(engineContext.engine.onConferenceEvent(event)) {
+                break;
+            }
         }
     }
 
