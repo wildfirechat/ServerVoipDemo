@@ -7,7 +7,7 @@
 ## 支持平台
 仅支持```macos + arm64```、```linux + x86_64```和```linux + aarch64```架构。其他平台架构不支持。
 
-linux 系统对 glibc 版本有要求：```linux + x86_64```要求 glibc 2.28 及以上，```linux + aarch64```要求 glibc 2.29 及以上。
+linux 系统对 glibc 版本有要求：```linux + x86_64```和```linux + aarch64```均要求 glibc 2.29 及以上（即 Debian 11+ / Ubuntu 20.04+，不支持 CentOS 8、Debian 10）。
 
 ## 编译
 打包```linux + x86_64```架构：
