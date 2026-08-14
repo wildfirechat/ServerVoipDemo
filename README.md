@@ -7,7 +7,24 @@
 ## 支持平台
 仅支持```macos + arm64```、```linux + x86_64```和```linux + aarch64```架构。其他平台架构不支持。
 
-linux 系统对 glibc 版本有要求：```linux + x86_64```和```linux + aarch64```均要求 glibc 2.29 及以上（即 Debian 11+ / Ubuntu 20.04+，不支持 CentOS 8、Debian 10）。
+linux 系统对 glibc 版本有要求：```linux + x86_64```和```linux + aarch64```均要求 **glibc 2.29 及以上**。在目标机器上执行```ldd --version```可以查看 glibc 版本。
+
+常见发行版的 glibc 版本及支持情况：
+
+| 发行版 | glibc 版本 | 是否支持 |
+| --- | --- | --- |
+| Ubuntu 20.04 / 22.04 / 24.04 | 2.31 / 2.35 / 2.39 | 支持 |
+| Ubuntu 18.04 | 2.27 | 不支持 |
+| Debian 11 (bullseye) / 12 (bookworm) | 2.31 / 2.36 | 支持 |
+| Debian 10 (buster) | 2.28 | 不支持 |
+| RHEL 9 / CentOS Stream 9 | 2.34 | 支持 |
+| CentOS 8 / RHEL 8 / CentOS Stream 8 | 2.28 | 不支持 |
+| CentOS 7 / RHEL 7 | 2.17 | 不支持 |
+| openEuler 22.03 / 24.03 | 2.34 / 2.38 | 支持 |
+| openEuler 20.03 | 2.28 | 不支持 |
+| 统信 UOS V20 | 2.28~2.31（因版本和更新级别而异） | 以实际为准 |
+| 银河麒麟 V10 | 2.28 | 不支持 |
+| Alpine Linux | musl（非 glibc） | 不支持 |
 
 ## 编译
 打包```linux + x86_64```架构：
