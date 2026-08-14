@@ -28,8 +28,10 @@ public class FileVideoCapture implements JavaVideoCapture {
     private final Conversation conversation;
     private final String callId;
     private FFmpegFrameGrabber grabber;
-    private Thread readThread;
-    private boolean isStoped;
+    private volatile Thread readThread;
+    // 读线程在循环条件里读这个标志，必须 volatile，
+    // 否则 JIT 可能把读取提升出循环，导致停止后线程永远不退
+    private volatile boolean isStoped;
 
     private static int videoWidth;
     private static int videoHeight;
@@ -109,6 +111,20 @@ public class FileVideoCapture implements JavaVideoCapture {
     synchronized private void stopReadFrames() {
         isStoped = true;
         cacheQueue.clear();
+        // 等待读线程退出，避免采集停止后线程仍在解码文件空转
+        Thread thread = readThread;
+        if(thread != null) {
+            thread.interrupt();
+            try {
+                thread.join(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if(thread.isAlive()) {
+                LOG.warn("video read thread did not stop in 2s({}).", callId);
+            }
+            readThread = null;
+        }
     }
 
     private void startReadFramesFromFile() throws FFmpegFrameGrabber.Exception {
@@ -183,22 +199,26 @@ public class FileVideoCapture implements JavaVideoCapture {
     private byte[] convertToI420(BufferedImage image) {
         byte[] rgbData = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
 
-        Mat rgbMat = new Mat(videoHeight, videoWidth, CV_8UC3, new BytePointer(rgbData));
+        // BytePointer 会在 native 堆外分配内存，必须显式关闭，
+        // 否则每帧泄漏一块堆外内存，GC 无法及时回收
+        try (BytePointer rgbPointer = new BytePointer(rgbData)) {
+            Mat rgbMat = new Mat(videoHeight, videoWidth, CV_8UC3, rgbPointer);
 
-        // 创建YUV420格式的Mat对象
-        Mat yuvImage = new Mat();
+            // 创建YUV420格式的Mat对象
+            Mat yuvImage = new Mat();
 
-        // 将RGB图像转换为YUV420格式
-        opencv_imgproc.cvtColor(rgbMat, yuvImage, opencv_imgproc.COLOR_BGR2YUV_I420);
+            // 将RGB图像转换为YUV420格式
+            opencv_imgproc.cvtColor(rgbMat, yuvImage, opencv_imgproc.COLOR_BGR2YUV_I420);
 
-        // 获取YUV420格式的二进制数组
-        BytePointer data = yuvImage.data();
-        byte[] yuv420 = new byte[(int) (yuvImage.total() * yuvImage.elemSize())];
-        data.get(yuv420);
+            // 获取YUV420格式的二进制数组
+            BytePointer data = yuvImage.data();
+            byte[] yuv420 = new byte[(int) (yuvImage.total() * yuvImage.elemSize())];
+            data.get(yuv420);
 
-        rgbMat.release();
-        yuvImage.release();
-        return yuv420;
+            rgbMat.release();
+            yuvImage.release();
+            return yuv420;
+        }
     }
 
 }
