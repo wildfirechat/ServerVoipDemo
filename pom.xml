@@ -239,6 +239,25 @@
 				</dependency>
 			</dependencies>
 		</profile>
+
+		<profile>
+			<id>webrtc-windows-x86_64</id>
+			<activation>
+				<property>
+					<name>webrtc.platform</name>
+					<value>windows-x86_64</value>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>dev.onvoid.webrtc</groupId>
+					<artifactId>webrtc-java-windows-x86_64</artifactId>
+					<version>0.1.0</version>
+					<scope>system</scope>
+					<systemPath>${project.basedir}/src/lib/webrtc-java-0.9.0-SNAPSHOT-windows-x86_64.jar</systemPath>
+				</dependency>
+			</dependencies>
+		</profile>
 	</profiles>
 
 </project>

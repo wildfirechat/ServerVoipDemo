@@ -5,7 +5,7 @@
 要使用服务端音视频SDK，必须分配一个机器人作为与用户沟通的角色。在用户看来是在跟一个机器人通话。一个机器人角色可以同时加入多路音视频通话。一个服务也支持同时配置多个机器人（在config目录下的```robot.properties```中配置），每个机器人独立处理自己的来电和通话。
 
 ## 支持平台
-仅支持```macos + arm64```、```linux + x86_64```和```linux + aarch64```架构。其他平台架构不支持。
+支持```windows + x86_64```、```macos + arm64```、```linux + x86_64```和```linux + aarch64```架构。其他平台架构不支持。
 
 linux 系统对 glibc 版本有要求：```linux + x86_64```和```linux + aarch64```均要求 **glibc 2.29 及以上**。在目标机器上执行```ldd --version```可以查看 glibc 版本。
 
@@ -48,6 +48,17 @@ mvn -Djavacpp.platform=linux-arm64 -Dwebrtc.platform=linux-aarch64 package
 mvn -Djavacpp.platform=macosx-arm64 -Dwebrtc.platform=macos-aarch64 package
 ```
 
+打包```windows + x86_64```架构：
+```
+mvn -Djavacpp.platform=windows-x86_64 -Dwebrtc.platform=windows-x86_64 package
+```
+
+注意：在 Windows PowerShell 中，带点的 ```-D``` 参数必须加引号，否则会被错误拆分：
+```
+mvn "-Djavacpp.platform=windows-x86_64" "-Dwebrtc.platform=windows-x86_64" package
+```
+或在 cmd 中执行原命令即可。
+
 ## 配置机器人
 在IM服务中为当前服务创建机器人，或者使用已有机器人，支持配置多个机器人。每个机器人的回调地址都配置为```http://${当前机器IP}:8883/robot/recvmsg```（会议事件回调为```http://${当前机器IP}:8883/robot/recvmsg/conference```），服务会根据消息中的toRobotId自动分发到对应的机器人。把所有机器人的信息配置到本项目config目录下的```robot.properties```文件里。
 
@@ -64,6 +75,19 @@ mvn -Djavacpp.platform=macosx-arm64 -Dwebrtc.platform=macos-aarch64 package
 ```
 java -jar server_voip_demo-XXXXX.jar
 ```
+
+注意：
+- 必须保证```config```目录在当前工作目录下，否则会报```config\robot.properties (系统找不到指定的路径。)```
+- 默认使用```8883```端口，如果报```Port 8883 was already in use```，请先结束占用该端口的进程，或修改```config/application.properties```中的端口配置。
+
+也可以使用 ```spring-boot:run``` 直接运行而不打包：
+```
+mvn "-Dwebrtc.platform=windows-x86_64" spring-boot:run
+```
+说明：
+- ```spring-boot:run``` 同样支持通过 ```-Dwebrtc.platform``` 激活对应平台的 profile，正确加载 ```webrtc-java-windows-x86_64``` 原生库。
+- 该方式默认以项目根目录为工作目录，只要```config```目录在项目根目录下即可。
+- ```spring-boot:run``` 不需要 ```-Djavacpp.platform```，该参数只影响打包时的 JavaCPP 依赖选择。
 
 ## 测试
 使用客户端给机器人打音视频通话，等待3秒钟后，服务就会接听。语音会延迟3秒把收到的语音回播给对方。如果是视频电话，会把```video.file.path```配置的视频文件循环播放给对方，并把收到的视频每隔15秒保存一张bmp图片到运行目录。
