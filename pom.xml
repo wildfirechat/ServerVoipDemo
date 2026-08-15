@@ -182,7 +182,7 @@
 	</build>
 
 	<!-- 指定 webrtc-java 平台架构打包，例如：
-	     mvn package                            （默认 linux-x86_64，要求 glibc >= 2.28）
+	     mvn package                            （默认 linux-x86_64，要求 glibc >= 2.29）
 	     mvn -Dwebrtc.platform=linux-aarch64 package  （要求 glibc >= 2.29）
 	     mvn -Dwebrtc.platform=macos-aarch64  package  -->
 	<profiles>
