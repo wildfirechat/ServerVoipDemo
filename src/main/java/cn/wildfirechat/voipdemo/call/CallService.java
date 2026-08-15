@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +40,11 @@ public class CallService {
 
     @Value("${video.file.path}")
     private String videoFilePath;
+
+    //音视频高级版janus服务地址替换关系（仅高级版音视频使用）。当本服务与janus服务在同一内网时，
+    //把SDP中janus的公网IP替换为内网IP。格式：公网IP:内网IP，多组之间用英文逗号分隔
+    @Value("${sdp.ip.replace.map:}")
+    private String sdpIpReplaceMap;
 
     //是否只发送音视频，不接收对方的音视频流（仅对高级版音视频有效）
     @Value("${call.send.only:false}")
@@ -72,6 +78,18 @@ public class CallService {
         if(!StringUtils.isEmpty(iceUrl)) {
             //如果是高级版，不用设置turn服务。
             AVEngineKit.addIceServer(iceUrl, iceUsername, icePassword);
+        }
+
+        //设置janus服务地址替换关系。只有使用高级版音视频且本服务与janus服务在同一内网时才需要调用。全局生效，只需设置一次
+        if(!StringUtils.isEmpty(sdpIpReplaceMap)) {
+            Map<String, String> ipReplaceMap = new HashMap<>();
+            for (String pair : sdpIpReplaceMap.split(",")) {
+                String[] kv = pair.trim().split(":");
+                if(kv.length == 2) {
+                    ipReplaceMap.put(kv[0].trim(), kv[1].trim());
+                }
+            }
+            AVEngineKit.setRemoteSdpIpReplaceMap(ipReplaceMap);
         }
 
         //打开webrtc的日志，一般不用打开，除非出现问题需要debug
